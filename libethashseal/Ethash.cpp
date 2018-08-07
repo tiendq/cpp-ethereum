@@ -161,6 +161,7 @@ void Ethash::manuallySubmitWork(const h256& _mixHash, Nonce _nonce)
     m_farm.submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
 }
 
+/*
 u256 Ethash::calculateDifficulty(BlockHeader const& _bi, BlockHeader const& _parent) const
 {
     const unsigned c_expDiffPeriod = 100000;
@@ -203,6 +204,17 @@ u256 Ethash::calculateDifficulty(BlockHeader const& _bi, BlockHeader const& _par
 
     o = max<bigint>(minimumDifficulty, o);
     return u256(min<bigint>(o, std::numeric_limits<u256>::max()));
+}
+*/
+
+// No difficulty for private test network.
+u256 Ethash::calculateDifficulty(BlockHeader const& _bi, BlockHeader const& _parent) const
+{
+    // Always return 1, if statement just to turn off "unused variables" compiler error.
+    if (!_bi.number() || 0 == _parent.timestamp())
+        return u256(bigint(1));
+    else
+        return u256(bigint(1));
 }
 
 void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const
