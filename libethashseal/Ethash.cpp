@@ -36,7 +36,8 @@ void Ethash::init()
 Ethash::Ethash()
 {
     map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
-    sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
+    sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances,
+        [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
     m_farm.setSealers(sealers);
     m_farm.onSolutionFound([=](EthashProofOfWork::Solution const& sol)
     {
@@ -44,6 +45,7 @@ Ethash::Ethash()
 //        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
         setMixHash(m_sealing, sol.mixHash);
         setNonce(m_sealing, sol.nonce);
+
         if (!quickVerifySeal(m_sealing))
             return false;
 

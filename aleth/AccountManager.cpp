@@ -42,6 +42,7 @@ void AccountManager::streamWalletHelp(ostream& _out)
     _out << "   wallet import <file>                        Import a presale wallet\n\n";
 }
 
+// CLI for account & wallet tasks.
 bool AccountManager::execute(int argc, char** argv)
 {
 	if (string(argv[1]) == "wallet")
@@ -50,15 +51,18 @@ bool AccountManager::execute(int argc, char** argv)
 		{
 			if (!openWallet())
 				return false;
+
 			string file = argv[3];
 			string name = "presale wallet";
 			string pw;
+	
 			try
 			{
 				KeyPair k = m_keyManager->presaleSecret(
 					contentsString(file),
 					[&](bool){ return (pw = getPassword("Enter the passphrase for the presale key: "));}
 				);
+
 				m_keyManager->import(k.secret(), name, pw, "Same passphrase as used for presale key");
 				cout << "  Address: {" << k.address().hex() << "}\n";
 			}
@@ -73,6 +77,7 @@ bool AccountManager::execute(int argc, char** argv)
 		}
 		else
 			streamWalletHelp(cout);
+
 		return true;
 	}
 	else if (string(argv[1]) == "account")
@@ -80,6 +85,7 @@ bool AccountManager::execute(int argc, char** argv)
 		if (argc < 3 || string(argv[2]) == "list")
 		{
 			openWallet();
+	
 			if (m_keyManager->store().keys().empty())
 				cout << "No keys found.\n";
 			else
@@ -114,6 +120,7 @@ bool AccountManager::execute(int argc, char** argv)
 		else if (2 < argc && string(argv[2]) == "new")
 		{
 			openWallet();
+
 			string name;
 			string lock;
 			string lockHint;

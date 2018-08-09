@@ -671,6 +671,7 @@ void Client::noteChanged(h256Hash const& _filters)
         i.second.clear();
 }
 
+/// Do some work. Handles blockchain maintenance and sealing.
 void Client::doWork(bool _doWait)
 {
     bool t = true;

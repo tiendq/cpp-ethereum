@@ -263,8 +263,8 @@ int main(int argc, char** argv)
         return !accountm.execute(argc, argv);
     }
 
-    // m.execute at line 806
-    MinerCLI m(MinerCLI::OperationMode::None);
+    // miner.execute at line 806
+    MinerCLI miner(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
     bool chainConfigIsSet = false;
@@ -394,9 +394,8 @@ int main(int argc, char** argv)
     addGeneralOption("help,h", "Show this help message and exit\n");
 
     po::options_description vmOptions = vmProgramOptions(c_lineWidth);
-
-
     po::options_description allowedOptions("Allowed options");
+
     allowedOptions.add(clientDefaultMode)
         .add(clientTransacting)
         .add(clientMining)
@@ -423,7 +422,7 @@ int main(int argc, char** argv)
         return -1;
     }
     for (size_t i = 0; i < unrecognisedOptions.size(); ++i)
-        if (!m.interpretOption(i, unrecognisedOptions))
+        if (!miner.interpretOption(i, unrecognisedOptions))
         {
             cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
             return -1;
@@ -803,7 +802,8 @@ int main(int argc, char** argv)
     if (loggingOptions.verbosity > 0)
         cout << EthGrayBold "aleth, a C++ Ethereum client" EthReset << "\n";
 
-    m.execute(); // miner
+    // Just set EthashCPUMiner::s_numInstances to MinerCLI::m_miningThreads
+    miner.execute(); // miner
 
     fs::path secretsPath;
     if (testingMode)
@@ -861,6 +861,7 @@ int main(int argc, char** argv)
     if (testingMode)
         chainParams.allowFutureBlocks = true;
 
+    // Main API hub for interfacing with Web 3 components.
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), getDataDir(),
         snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
         netPrefs, &nodesState, testingMode);
@@ -1022,18 +1023,17 @@ int main(int argc, char** argv)
     web3.setIdealPeerCount(peers);
     web3.setPeerStretch(peerStretch);
 
-    // auto?
-    std::shared_ptr<eth::TrivialGasPricer> gasPricer =
-        make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
-    eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
+    auto gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
+    eth::Client* ethClient = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 
-    if (c)
+    if (ethClient)
     {
-        c->setGasPricer(gasPricer);
-        c->setSealer(m.minerType()); // miner
-        c->setAuthor(author);
+        ethClient->setGasPricer(gasPricer);
+        ethClient->setSealer(miner.minerType()); // miner
+        ethClient->setAuthor(author);
+
         if (networkID != NoNetworkID)
-            c->setNetworkId(networkID);
+            ethClient->setNetworkId(networkID);
     }
 
     auto renderFullAddress = [&](Address const& _a) -> std::string
@@ -1046,6 +1046,7 @@ int main(int argc, char** argv)
 
     if (bootstrap || !remoteHost.empty() || enableDiscovery || listenSet || !preferredNodes.empty())
     {
+        // Start the network subsystem.
         web3.startNetwork();
         cout << "Node ID: " << web3.enode() << "\n";
     }
@@ -1097,6 +1098,7 @@ int main(int argc, char** argv)
         accountHolder.reset(new SimpleAccountHolder([&](){ return web3.ethereum(); }, getAccountPassword, keyManager, authenticator));
         auto ethFace = new rpc::Eth(*web3.ethereum(), *accountHolder.get());
         rpc::TestFace* testEth = nullptr;
+        
         if (testingMode)
             testEth = new rpc::Test(*web3.ethereum());
 
@@ -1129,23 +1131,29 @@ int main(int argc, char** argv)
     if (bootstrap && privateChain.empty())
         for (auto const& i: Host::pocHosts())
             web3.requirePeer(i.first, i.second);
+    
     if (!remoteHost.empty())
         web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));
 
+    // Signal app to exit.
     signal(SIGABRT, &ExitHandler::exitHandler);
     signal(SIGTERM, &ExitHandler::exitHandler);
     signal(SIGINT, &ExitHandler::exitHandler);
 
-    if (c)
+    // If started a network client?
+    if (ethClient)
     {
-        unsigned n = c->blockChain().details().number;
+        unsigned n = ethClient->blockChain().details().number;
+        
+        // is mining enabled from command line?
         if (mining)
-            c->startSealing();
+            ethClient->startSealing();
 
         while (!exitHandler.shouldExit())
-            stopSealingAfterXBlocks(c, n, mining);
+            stopSealingAfterXBlocks(ethClient, n, mining);
     }
     else
+        // what is it?
         while (!exitHandler.shouldExit())
             this_thread::sleep_for(chrono::milliseconds(1000));
 
@@ -1153,7 +1161,9 @@ int main(int argc, char** argv)
         jsonrpcIpcServer->StopListening();
 
     auto netData = web3.saveNetwork();
+
     if (!netData.empty())
         writeFile(getDataDir() / fs::path("network.rlp"), netData);
+
     return 0;
 }

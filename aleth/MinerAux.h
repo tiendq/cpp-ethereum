@@ -52,11 +52,12 @@ public:
         Benchmark
     };
 
-
     explicit MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode)
     {
+        // SealEngineRegistrar::registerSealEngine("Ethash") => new Ethash();
         Ethash::init();
         NoProof::init();
+        // SealEngineRegistrar::registerSealEngine("BasicAuthority") => new BasicAuthority(); <-- empty
         BasicAuthority::init();
     }
 
