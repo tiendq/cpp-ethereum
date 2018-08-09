@@ -66,6 +66,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
+
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
@@ -253,13 +254,16 @@ int main(int argc, char** argv)
         catch (...) {}
     }
 
+    // CLI for account & wallet tasks.
+    // aleth account
+    // aleth wallet
     if (argc > 1 && (string(argv[1]) == "wallet" || string(argv[1]) == "account"))
     {
         AccountManager accountm;
         return !accountm.execute(argc, argv);
     }
 
-
+    // m.execute at line 806
     MinerCLI m(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
@@ -404,6 +408,8 @@ int main(int argc, char** argv)
 
     po::variables_map vm;
     vector<string> unrecognisedOptions;
+
+    // Check and report invalid command options.
     try
     {
         po::parsed_options parsed = po::command_line_parser(argc, argv).options(allowedOptions).allow_unregistered().run();
@@ -501,6 +507,8 @@ int main(int argc, char** argv)
             }
         }
     }
+
+    // full or peer mode?
     if (vm.count("mode"))
     {
         string m = vm["mode"].as<string>();
@@ -706,6 +714,8 @@ int main(int argc, char** argv)
             cerr << "Bad " << "--network-id" << " option: " << vm["network-id"].as<string>() << "\n";
             return -1;
         }
+
+    // Private network.
     if (vm.count("private"))
         try
         {
@@ -762,7 +772,6 @@ int main(int argc, char** argv)
         return 0;
     }
 
-
     if (!configJSON.empty())
     {
         try
@@ -794,14 +803,16 @@ int main(int argc, char** argv)
     if (loggingOptions.verbosity > 0)
         cout << EthGrayBold "aleth, a C++ Ethereum client" EthReset << "\n";
 
-    m.execute();
+    m.execute(); // miner
 
     fs::path secretsPath;
     if (testingMode)
         secretsPath = boost::filesystem::path(getDataDir()) / "keystore";
     else
         secretsPath = SecretStore::defaultPath();
+
     KeyManager keyManager(KeyManager::defaultPath(), secretsPath);
+
     for (auto const& s: passwordsToNote)
         keyManager.notePassword(s);
 
@@ -819,6 +830,7 @@ int main(int argc, char** argv)
         g_silence = s;
         return ret;
     };
+
     auto getResponse = [&](string const& prompt, unordered_set<string> const& acceptable) {
         bool s = g_silence;
         g_silence = true;
@@ -959,7 +971,7 @@ int main(int argc, char** argv)
                     masterPassword = getPassword("Please enter your MASTER password: ");
                     if (keyManager.load(masterPassword))
                         break;
-                    cout << "The password you entered is incorrect. If you have forgotten your password, and you wish to start afresh, manually remove the file: " << (getDataDir("ethereum") / fs::path("keys.info")).string() << "\n";
+                    cout << "The password you entered is incorrect. If you have forgotten your password, and you wish to start a fresh, manually remove the file: " << (getDataDir("ethereum") / fs::path("keys.info")).string() << "\n";
                 }
             }
         }
@@ -1009,13 +1021,16 @@ int main(int argc, char** argv)
 
     web3.setIdealPeerCount(peers);
     web3.setPeerStretch(peerStretch);
+
+    // auto?
     std::shared_ptr<eth::TrivialGasPricer> gasPricer =
         make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
     eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
+
     if (c)
     {
         c->setGasPricer(gasPricer);
-        c->setSealer(m.minerType());
+        c->setSealer(m.minerType()); // miner
         c->setAuthor(author);
         if (networkID != NoNetworkID)
             c->setNetworkId(networkID);

@@ -200,7 +200,7 @@ private:
 
     /// Mining options
     std::string m_minerType = "cpu";
-    unsigned m_miningThreads = UINT_MAX;
+    unsigned m_miningThreads = 1; // UINT_MAX; // Eat all CPU time?
     uint64_t m_currentBlock = 0;
 
     /// Benchmarking params

@@ -49,5 +49,3 @@ private:
 
 	std::unique_ptr<dev::eth::KeyManager> m_keyManager;
 };
-
-
