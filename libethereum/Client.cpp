@@ -406,6 +406,7 @@ void Client::syncBlockQueue()
         m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
     if (ir.liveBlocks.empty())
         return;
+
     onChainChanged(ir);
 }
 
@@ -582,7 +583,9 @@ void Client::startSealing()
 {
     if (m_wouldSeal == true)
         return;
+
     LOG(m_logger) << "Mining Beneficiary: " << author();
+
     if (author())
     {
         m_wouldSeal = true;
@@ -688,17 +691,20 @@ void Client::doWork(bool _doWait)
     bool isSealed = false;
     DEV_READ_GUARDED(x_working)
         isSealed = m_working.isSealed();
+
     if (!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
         syncTransactionQueue();
 
     tick();
 
+    // What's it?
     rejigSealing();
 
     callQueuedFunctions();
 
     DEV_READ_GUARDED(x_working)
-        isSealed = m_working.isSealed();
+    isSealed = m_working.isSealed();
+
     // If the block is sealed, we have to wait for it to tickle through the block queue
     // (which only signals as wanting to be synced if it is ready).
     if (!m_syncBlockQueue && !m_syncTransactionQueue && (_doWait || isSealed) && isWorking())

@@ -129,7 +129,6 @@ class Host: public Worker
 {
     friend class HostNodeTableHandler;
     friend class RLPXHandshake;
-    
     friend class Session;
 
 public:
@@ -171,7 +170,7 @@ public:
 
     /// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
     void addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint);
-    
+
     /// Create Peer and attempt keeping peer connected.
     void requirePeer(NodeID const& _node, NodeIPEndpoint const& _endpoint);
 
@@ -180,13 +179,13 @@ public:
 
     /// Note peer as no longer being required.
     void relinquishPeer(NodeID const& _node);
-    
+
     /// Set ideal number of peers.
     void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
     /// Set multipier for max accepted connections.
     void setPeerStretch(unsigned _n) { m_stretchPeers = _n; }
-    
+
     /// Get peer information.
     PeerSessionInfos peerSessionInfo() const;
 
@@ -224,7 +223,7 @@ public:
 
     /// @returns if network is started and interactive.
     bool haveNetwork() const { Guard l(x_runTimer); Guard ll(x_nodeTable); return m_run && !!m_nodeTable; }
-    
+
     /// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
     void startPeerSession(Public const& _id, RLP const& _hello, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s);
 
@@ -259,9 +258,9 @@ protected:
 
 private:
     enum PeerSlotType { Egress, Ingress };
-    
+
     unsigned peerSlots(PeerSlotType _type) { return _type == Egress ? m_idealPeerCount : m_idealPeerCount * m_stretchPeers; }
-    
+
     bool havePeerSession(NodeID const& _id) { return !!peerSession(_id); }
 
     /// Determines and sets m_tcpPublic to publicly advertised address.
@@ -271,7 +270,7 @@ private:
 
     /// Returns true if pending and connected peer count is less than maximum
     bool peerSlotsAvailable(PeerSlotType _type = Ingress);
-    
+
     /// Ping the peers to update the latency information and disconnect peers which have timed out.
     void keepAlivePeers();
 
@@ -315,7 +314,7 @@ private:
 
     std::atomic<int> m_listenPort{-1};												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
-    ba::io_service m_ioService;											///< IOService for network stuff.
+    ba::io_service m_ioService;	///< IOService for network stuff.
     bi::tcp::acceptor m_tcp4Acceptor;										///< Listening acceptor.
 
     std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
@@ -333,7 +332,7 @@ private:
 
     /// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
     std::unordered_map<NodeID, std::shared_ptr<Peer>> m_peers;
-    
+
     /// Peers we try to connect regardless of p2p network.
     std::set<NodeID> m_requiredPeers;
     mutable Mutex x_requiredPeers;
@@ -342,7 +341,7 @@ private:
     /// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
     mutable std::unordered_map<NodeID, std::weak_ptr<SessionFace>> m_sessions;
     mutable RecursiveMutex x_sessions;
-    
+
     std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
     Mutex x_connecting;													///< Mutex for m_connecting.
 
@@ -350,7 +349,7 @@ private:
     unsigned m_stretchPeers = 7;										///< Accepted connection multiplier (max peers = ideal*stretch).
 
     std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
-    
+
     /// Deadline timers used for isolated network events. GC'd by run.
     std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
     Mutex x_timers;

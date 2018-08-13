@@ -103,12 +103,15 @@ bool UnixDomainSocketServer::StopListening()
 	return false;
 }
 
+// What does it do?
 void UnixDomainSocketServer::Listen()
 {
 	socklen_t addressLen = sizeof(m_address);
+
 	while (m_running)
 	{
 		int connection = accept(m_socket, (sockaddr*) &(m_address), &addressLen);
+
 		if (connection > 0)
 		{
 			DEV_GUARDED(x_sockets)
@@ -129,7 +132,6 @@ void UnixDomainSocketServer::CloseConnection(int _socket)
 	shutdown(_socket, SHUT_RDWR);
 	close(_socket);
 }
-
 
 size_t UnixDomainSocketServer::Write(int _connection, string const& _data)
 {

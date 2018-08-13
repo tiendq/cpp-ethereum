@@ -226,7 +226,6 @@ public:
         return m_onBlockSealed.add(_handler);
     }
 
-
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.

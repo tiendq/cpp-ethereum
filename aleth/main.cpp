@@ -925,6 +925,7 @@ int main(int argc, char** argv)
             block.resize(RLP(block, RLP::LaissezFaire).actualSize());
             in.read((char*)block.data() + 8, block.size() - 8);
 
+            // do what?
             switch (web3.ethereum()->queueBlock(block, safeImport))
             {
             case ImportResult::Success: good++; break;
@@ -954,6 +955,8 @@ int main(int argc, char** argv)
         while (moreToImport)
         {
             this_thread::sleep_for(chrono::seconds(1));
+
+            // why sync more 100000 here?
             tie(ignore, moreToImport, ignore) = web3.ethereum()->syncQueue(100000);
         }
         double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
@@ -1019,13 +1022,13 @@ int main(int argc, char** argv)
         }
     }
 
-
     web3.setIdealPeerCount(peers);
     web3.setPeerStretch(peerStretch);
 
     auto gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
     eth::Client* ethClient = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 
+    // ethClient is EthashClient
     if (ethClient)
     {
         ethClient->setGasPricer(gasPricer);
@@ -1046,8 +1049,12 @@ int main(int argc, char** argv)
 
     if (bootstrap || !remoteHost.empty() || enableDiscovery || listenSet || !preferredNodes.empty())
     {
+        // LOST HERE!!!
+
         // Start the network subsystem.
-        web3.startNetwork();
+        // Should run in background and send us events when blocks found and allow us to send blocks as required.
+        web3.startNetwork(); // Just call p2p::Host.start()
+
         cout << "Node ID: " << web3.enode() << "\n";
     }
     else
@@ -1060,6 +1067,7 @@ int main(int argc, char** argv)
     AddressHash allowedDestinations;
 
     std::function<bool(TransactionSkeleton const&, bool)> authenticator;
+
     if (testingMode)
         authenticator = [](TransactionSkeleton const&, bool) -> bool { return true; };
     else
@@ -1085,6 +1093,7 @@ int main(int argc, char** argv)
 
     ExitHandler exitHandler;
 
+    // IPC server enabled by default.
     if (ipc)
     {
         using FullServer = ModularServer<
@@ -1098,7 +1107,7 @@ int main(int argc, char** argv)
         accountHolder.reset(new SimpleAccountHolder([&](){ return web3.ethereum(); }, getAccountPassword, keyManager, authenticator));
         auto ethFace = new rpc::Eth(*web3.ethereum(), *accountHolder.get());
         rpc::TestFace* testEth = nullptr;
-        
+
         if (testingMode)
             testEth = new rpc::Test(*web3.ethereum());
 
@@ -1110,9 +1119,10 @@ int main(int argc, char** argv)
             new rpc::Debug(*web3.ethereum()),
             testEth
         ));
+
         auto ipcConnector = new IpcServer("geth");
         jsonrpcIpcServer->addConnector(ipcConnector);
-        ipcConnector->StartListening();
+        ipcConnector->StartListening(); // IpcServerBase::StartListening()
 
         if (jsonAdmin.empty())
             jsonAdmin = sessionManager->newSession(rpc::SessionPermissions{{rpc::Privilege::Admin}});
@@ -1131,7 +1141,7 @@ int main(int argc, char** argv)
     if (bootstrap && privateChain.empty())
         for (auto const& i: Host::pocHosts())
             web3.requirePeer(i.first, i.second);
-    
+
     if (!remoteHost.empty())
         web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));
 
@@ -1144,7 +1154,7 @@ int main(int argc, char** argv)
     if (ethClient)
     {
         unsigned n = ethClient->blockChain().details().number;
-        
+
         // is mining enabled from command line?
         if (mining)
             ethClient->startSealing();

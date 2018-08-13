@@ -31,6 +31,7 @@ void Worker::startWorking()
 {
 //	cnote << "startWorking for thread" << m_name;
 	std::unique_lock<std::mutex> l(x_work);
+
 	if (m_work)
 	{
 		WorkerState ex = WorkerState::Stopped;
@@ -44,7 +45,7 @@ void Worker::startWorking()
 		m_work.reset(new thread([&]()
 		{
 			setThreadName(m_name.c_str());
-//			cnote << "Thread begins";
+			//			cnote << "Thread begins";
 			while (m_state != WorkerState::Killing)
 			{
 				WorkerState ex = WorkerState::Starting;
@@ -53,13 +54,13 @@ void Worker::startWorking()
 					unique_lock<mutex> l(x_work);
 					m_state = WorkerState::Started;
 				}
-//				cnote << "Trying to set Started: Thread was" << (unsigned)ex << "; " << ok;
+				//				cnote << "Trying to set Started: Thread was" << (unsigned)ex << "; " << ok;
 				m_state_notifier.notify_all();
 
 				try
 				{
 					startedWorking();
-					workLoop();
+					workLoop(); // doWork();
 					doneWorking();
 				}
 				catch (std::exception const& _e)
@@ -67,19 +68,19 @@ void Worker::startWorking()
 					cwarn << "Exception thrown in Worker thread: " << _e.what();
 				}
 
-//				ex = WorkerState::Stopping;
-//				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
+				//				ex = WorkerState::Stopping;
+				//				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
 
 				{
 					// the condition variable-related lock
 					unique_lock<mutex> l(x_work);
 					ex = m_state.exchange(WorkerState::Stopped);
-//					cnote << "State: Stopped: Thread was" << (unsigned)ex;
+					//					cnote << "State: Stopped: Thread was" << (unsigned)ex;
 					if (ex == WorkerState::Killing || ex == WorkerState::Starting)
 						m_state.exchange(ex);
 				}
 				m_state_notifier.notify_all();
-//				cnote << "Waiting until not Stopped...";
+				//				cnote << "Waiting until not Stopped...";
 
 				{
 					unique_lock<mutex> l(x_work);
@@ -89,7 +90,7 @@ void Worker::startWorking()
 				}
 			}
 		}));
-//		cnote << "Spawning" << m_name;
+		//		cnote << "Spawning" << m_name;
 	}
 
 	DEV_TIMED_ABOVE("Start worker", 100)
