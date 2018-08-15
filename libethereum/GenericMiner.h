@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
@@ -45,23 +46,24 @@ template <class PoW> class GenericMiner;
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-template <class PoW> class GenericFarmFace
+template <class PoW>
+class GenericFarmFace
 {
-public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using Miner = GenericMiner<PoW>;
+	public:
+		using WorkPackage = typename PoW::WorkPackage;
+		using Solution = typename PoW::Solution;
+		using Miner = GenericMiner<PoW>;
 
-	virtual ~GenericFarmFace() {}
+		virtual ~GenericFarmFace() {}
 
-	/**
-	 * @brief Called from a Miner to note a WorkPackage has a solution.
-	 * @param _p The solution.
-	 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
-	 * @param _finder The miner that found it.
-	 * @return true iff the solution was good (implying that mining should be .
-	 */
-	virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
+		/**
+		 * @brief Called from a Miner to note a WorkPackage has a solution.
+		 * @param _p The solution.
+		 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
+		 * @param _finder The miner that found it.
+		 * @return true if the solution was good (implying that mining should be .
+		 */
+		virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
 };
 
 /**
@@ -83,7 +85,7 @@ public:
 	virtual ~GenericMiner() {}
 
 	// API FOR THE FARM TO CALL IN WITH
-
+	// called by GenericFarm::setWork
 	void setWork(WorkPackage const& _work = WorkPackage())
 	{
 		bool const old_exists = !!m_work;
@@ -91,6 +93,7 @@ public:
 			Guard l(x_work);
 			m_work = _work;
 		}
+
 		if (!!_work)
 		{
 			DEV_TIMED_ABOVE("pause", 250)
@@ -100,6 +103,7 @@ public:
 		}
 		else if (!_work && old_exists)
 			pause();
+
 		Guard l(x_hashCount);
 		m_hashCount = 0;
 	}
@@ -134,14 +138,18 @@ protected:
 	 */
 	bool submitProof(Solution const& _s)
 	{
+		cout << "GenericMiner::submitProof " << m_index << endl;
+
 		if (!m_farm)
 			return true;
+
 		if (m_farm->submitProof(_s, this))
 		{
 			Guard l(x_work);
 			m_work.reset();
 			return true;
 		}
+
 		return false;
 	}
 

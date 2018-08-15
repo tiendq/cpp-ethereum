@@ -15,6 +15,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
 #include "Ethash.h"
 #include "EthashCPUMiner.h"
 
@@ -35,20 +36,35 @@ void Ethash::init()
 
 Ethash::Ethash()
 {
+    cout << "Initialize Ethash" << endl;
+
     map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+
     sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances,
-        [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
+        [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci) {
+            // ci.first is this m_farm
+            // ci.second is miner index
+            return new EthashCPUMiner(ci);
+        }
+    };
+
+    // array of miners: EthashCPUMiner
     m_farm.setSealers(sealers);
+
+    // called from m_farm.submitProof when a solution found (mined).
     m_farm.onSolutionFound([=](EthashProofOfWork::Solution const& sol)
     {
         std::unique_lock<Mutex> l(m_submitLock);
-//        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
+
+        cout << "Ethash::Ethash() m_farm::onSolutionFound raised" << endl;
+
         setMixHash(m_sealing, sol.mixHash);
         setNonce(m_sealing, sol.nonce);
 
         if (!quickVerifySeal(m_sealing))
             return false;
 
+        // where is onSealGenerated called to initialize m_onSealGenerated?
         if (m_onSealGenerated)
         {
             RLPStream ret;
@@ -56,6 +72,7 @@ Ethash::Ethash()
             l.unlock();
             m_onSealGenerated(ret.out());
         }
+
         return true;
     });
 }
@@ -226,6 +243,7 @@ void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) co
     _bi.setGasLimit(childGasLimit(_parent));
 }
 
+// Verify if found hash is valid.
 bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
 {
     h256 const h = _blockHeader.hash(WithoutSeal);
@@ -248,10 +266,14 @@ bool Ethash::verifySeal(BlockHeader const& _blockHeader) const
     return ethash::verify(context, toEthash(h), toEthash(m), toEthash(n), toEthash(b));
 }
 
+// where is it called?
+// https://ethereum.stackexchange.com/questions/6093/what-does-it-mean-to-seal-a-block
 void Ethash::generateSeal(BlockHeader const& _bi)
 {
     Guard l(m_submitLock);
     m_sealing = _bi;
+
+    // TODO: Why is setWork called twice?
     m_farm.setWork(m_sealing);
     m_farm.start(m_sealer);
     m_farm.setWork(m_sealing);

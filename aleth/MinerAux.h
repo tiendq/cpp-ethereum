@@ -20,6 +20,7 @@
  * CLI module for mining.
  */
 
+#include <iostream>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <libdevcore/CommonJS.h>
 #include <libethcore/BasicAuthority.h>
@@ -54,13 +55,20 @@ public:
 
     explicit MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode)
     {
+        cout << "Initialize MinerCLI" << endl;
+
         // SealEngineRegistrar::registerSealEngine("Ethash") => new Ethash();
-        Ethash::init();
-        NoProof::init();
+        Ethash::init(); // duplicated with main:178?
+        NoProof::init(); // duplicated with main:179?
+
         // SealEngineRegistrar::registerSealEngine("BasicAuthority") => new BasicAuthority(); <-- empty
         BasicAuthority::init();
     }
 
+    // Aha, I just found mining options are handled in MinerCLI::interpretOption.
+    // I missed it because it uses input data named unrecognisedOptions :).
+    // These options are also not handled in the way other options are handled via boost::program_options.
+    // --disable-submit-hashrate is missing.
     bool interpretOption(size_t& i, vector<string> const& argv)
     {
         size_t argc = argv.size();
@@ -116,8 +124,10 @@ public:
 
     void execute()
     {
-        if (m_minerType == "cpu")
+        if (m_minerType == "cpu") {
+            cout << "--mining-threads = " << m_miningThreads << endl;
             EthashCPUMiner::setNumInstances(m_miningThreads);
+        }
         else if (mode == OperationMode::Benchmark)
             doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
     }
@@ -201,7 +211,7 @@ private:
 
     /// Mining options
     std::string m_minerType = "cpu";
-    unsigned m_miningThreads = 1; // UINT_MAX; // Eat all CPU time?
+    unsigned m_miningThreads = UINT_MAX; // Eat all CPU time? replaced with --mining-threads option
     uint64_t m_currentBlock = 0;
 
     /// Benchmarking params

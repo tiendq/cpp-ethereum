@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <thread>
 #include <list>
 #include <atomic>
@@ -45,6 +46,7 @@ template <class PoW>
 class GenericFarm: public GenericFarmFace<PoW>
 {
 public:
+	/// Redundancy, duplicated with GenericFarmFace declarations.
 	using WorkPackage = typename PoW::WorkPackage;
 	using Solution = typename PoW::Solution;
 	using Miner = GenericMiner<PoW>;
@@ -66,12 +68,18 @@ public:
 	 */
 	void setWork(WorkPackage const& _wp)
 	{
+		cout << "GenericFarm::setWork" << endl;
+
 		WriteGuard l(x_minerWork);
+
 		if (_wp.headerHash() == m_work.headerHash())
 			return;
+
 		m_work = _wp;
+
 		for (auto const& m: m_miners)
 			m->setWork(m_work);
+
 		resetTimer();
 	}
 
@@ -80,27 +88,40 @@ public:
 	/**
 	 * @brief Start a number of miners.
 	 */
+	// Is it called once?
 	bool start(std::string const& _sealer)
 	{
+		cout << "GenericFarm::start" << endl;
+
 		WriteGuard l(x_minerWork);
+
 		if (!m_miners.empty() && m_lastSealer == _sealer)
 			return true;
+
 		if (!m_sealers.count(_sealer))
 			return false;
 
 		m_miners.clear();
+
 		auto ins = m_sealers[_sealer].instances();
 		m_miners.reserve(ins);
+
 		for (unsigned i = 0; i < ins; ++i)
 		{
+			cout << "Creating miner " << _sealer << endl;
+
+			// Actually call new EthashCPUMiner(ci) in Ethash::Ethash (47)
 			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(std::make_pair(this, i))));
 			m_miners.back()->setWork(m_work);
 		}
+
 		m_isMining = true;
 		m_lastSealer = _sealer;
+
 		resetTimer();
 		return true;
 	}
+
 	/**
 	 * @brief Stop all mining activities.
 	 */
@@ -158,13 +179,15 @@ public:
 	WorkPackage work() const { ReadGuard l(x_minerWork); return m_work; }
 
 	/**
-	 * @brief Called from a Miner to note a WorkPackage has a solution.
+	 * @brief Called from a GenericMiner::submitProof to note a WorkPackage has a solution.
 	 * @param _p The solution.
 	 * @param _wp The WorkPackage that the Solution is for.
-	 * @return true iff the solution was good (implying that mining should be .
+	 * @return true if the solution was good (implying that mining should be .
 	 */
 	bool submitProof(Solution const& _s, Miner* _m) override
 	{
+		cout << "GenericFarm::submitProof Miner has a solution: " << _m->index() << endl;
+
 		if (m_onSolutionFound && m_onSolutionFound(_s))
 			if (x_minerWork.try_lock())
 			{
@@ -175,6 +198,7 @@ public:
 				x_minerWork.unlock();
 				return true;
 			}
+
 		return false;
 	}
 

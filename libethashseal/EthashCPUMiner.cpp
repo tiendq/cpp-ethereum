@@ -21,6 +21,7 @@
  * Determines the PoW algorithm.
  */
 
+#include <iostream>
 #include "EthashCPUMiner.h"
 #include "Ethash.h"
 
@@ -40,6 +41,7 @@ unsigned EthashCPUMiner::s_numInstances = 0;
 EthashCPUMiner::EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci)
   : GenericMiner<EthashProofOfWork>(_ci)
 {
+    cout << "Initialize EthashCPUMiner" << endl;
 }
 
 EthashCPUMiner::~EthashCPUMiner()
@@ -60,10 +62,12 @@ void EthashCPUMiner::pause()
 
 void EthashCPUMiner::startWorking()
 {
+    cout << "EthashCPUMiner::startWorking()" << endl;
+
     if (!m_thread)
     {
         m_shouldStop = false;
-        m_thread.reset(new thread(&EthashCPUMiner::minerBody, this));
+        m_thread.reset(new thread(&EthashCPUMiner::minerBody, this)); // this is unused
     }
 }
 
@@ -77,12 +81,17 @@ void EthashCPUMiner::stopWorking()
     }
 }
 
-
+// Solve PoW here.
 void EthashCPUMiner::minerBody()
 {
+    cout << "EthashCPUMiner::minerBody() " << "miner " + toString(index()) << endl;
+
     setThreadName("miner" + toString(index()));
 
     auto tid = std::this_thread::get_id();
+
+    // https://docs.microsoft.com/en-us/cpp/standard-library/mersenne-twister-engine-class
+    // Generates a high quality random sequence of integers based on the Mersenne twister algorithm.
     static std::mt19937_64 s_eng((utcTime() + std::hash<decltype(tid)>()(tid)));
 
     uint64_t tryNonce = s_eng();
@@ -94,13 +103,21 @@ void EthashCPUMiner::minerBody()
     auto& ethashContext = ethash::get_global_epoch_context_full(epoch);
 
     h256 boundary = w.boundary;
+
     for (unsigned hashCount = 1; !m_shouldStop; tryNonce++, hashCount++)
     {
         auto result = ethash::hash(ethashContext, toEthash(w.headerHash()), tryNonce);
         h256 value = h256(result.final_hash.bytes, h256::ConstructFromPointer);
-        if (value <= boundary && submitProof(EthashProofOfWork::Solution{(h64)(u64)tryNonce,
-                                     h256(result.mix_hash.bytes, h256::ConstructFromPointer)}))
-            break;
+
+        // what if GenericFarm::m_onSolutionFound return false?
+        if (value <= boundary &&
+            submitProof(EthashProofOfWork::Solution{(h64)(u64)tryNonce, h256(result.mix_hash.bytes, h256::ConstructFromPointer)})) {
+                cout << "EthashCPUMiner::minerBody() submitted a solution " << tryNonce << " " << result.mix_hash.bytes << endl;
+                break;
+            }
+
+        // m_hashCount += 100
+        // what's it used for?
         if (!(hashCount % 100))
             accumulateHashes(100);
     }

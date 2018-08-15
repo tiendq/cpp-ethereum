@@ -263,7 +263,7 @@ int main(int argc, char** argv)
         return !accountm.execute(argc, argv);
     }
 
-    // miner.execute at line 806
+    // next call: miner.execute at line 806
     MinerCLI miner(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
@@ -421,6 +421,7 @@ int main(int argc, char** argv)
         cerr << e.what();
         return -1;
     }
+
     for (size_t i = 0; i < unrecognisedOptions.size(); ++i)
         if (!miner.interpretOption(i, unrecognisedOptions))
         {
@@ -529,9 +530,12 @@ int main(int argc, char** argv)
         ipc = true;
     if (vm.count("no-ipc"))
         ipc = false;
+
+    // check if mining option is enabled (CPU miner mode)
     if (vm.count("mining"))
     {
         string m = vm["mining"].as<string>();
+
         if (isTrue(m))
             mining = ~(unsigned)0;
         else if (isFalse(m))
@@ -803,7 +807,7 @@ int main(int argc, char** argv)
         cout << EthGrayBold "aleth, a C++ Ethereum client" EthReset << "\n";
 
     // Just set EthashCPUMiner::s_numInstances to MinerCLI::m_miningThreads
-    miner.execute(); // miner
+    miner.execute();
 
     fs::path secretsPath;
     if (testingMode)
@@ -1032,7 +1036,7 @@ int main(int argc, char** argv)
     if (ethClient)
     {
         ethClient->setGasPricer(gasPricer);
-        ethClient->setSealer(miner.minerType()); // miner
+        ethClient->setSealer(miner.minerType());
         ethClient->setAuthor(author);
 
         if (networkID != NoNetworkID)
@@ -1156,6 +1160,7 @@ int main(int argc, char** argv)
         unsigned n = ethClient->blockChain().details().number;
 
         // is mining enabled from command line?
+        // Start mining here?
         if (mining)
             ethClient->startSealing();
 

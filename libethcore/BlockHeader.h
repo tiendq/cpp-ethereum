@@ -94,6 +94,10 @@ DEV_SIMPLE_EXCEPTION(GenesisBlockCannotBeCalculated);
  * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
  */
+// A blocks header is the top hash of applying the Merkle procedure to a the data contained in the block.
+// Thus even if a block has a large number of transactions all that is stored is the root hash
+// of the Merkle tree.
+// https://ethereum.stackexchange.com/questions/2100/what-is-a-block-hash?rq=1
 class BlockHeader
 {
     friend class BlockChain;

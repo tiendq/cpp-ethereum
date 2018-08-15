@@ -34,11 +34,14 @@ public:
     explicit EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci);
     ~EthashCPUMiner() override;
 
+    // it's equal --mining-threads option.
     static unsigned instances()
     {
         return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency();
     }
+
     static std::string platformInfo();
+
     static void setNumInstances(unsigned _instances)
     {
         s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency());
