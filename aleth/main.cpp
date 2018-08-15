@@ -1159,8 +1159,8 @@ int main(int argc, char** argv)
     {
         unsigned n = ethClient->blockChain().details().number;
 
-        // is mining enabled from command line?
-        // Start mining here?
+        // Start mining here if mining enabled from command line
+        // Just signals all threads are waiting for m_signalled
         if (mining)
             ethClient->startSealing();
 

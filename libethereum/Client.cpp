@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <iostream>
 #include "Client.h"
 #include "Block.h"
 #include "Defaults.h"
@@ -97,6 +98,8 @@ Client::~Client()
 void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
     fs::path const& _snapshotDownloadPath, WithExisting _forceAction, u256 _networkId)
 {
+    cout << "Client::init" << endl;
+
     DEV_TIMED_FUNCTION_ABOVE(500);
 
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
@@ -154,6 +157,7 @@ void Client::init(p2p::Host& _extNet, fs::path const& _dbPath,
 
     if (_dbPath.size())
         Defaults::setDBPath(_dbPath);
+
     doWork(false);
 }
 
@@ -386,8 +390,6 @@ double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
-//  cdebug << "syncBlockQueue()";
-
     ImportRoute ir;
     unsigned count;
     Timer t;
@@ -595,6 +597,7 @@ void Client::startSealing()
         LOG(m_logger) << "You need to set an author in order to seal!";
 }
 
+// Start mining a block.
 void Client::rejigSealing()
 {
     if ((wouldSeal() || remoteActive()) && !isMajorSyncing())
@@ -611,6 +614,7 @@ void Client::rejigSealing()
                     LOG(m_logger) << "Tried to seal sealed block...";
                     return;
                 }
+
                 // TODO is that needed? we have "Generating seal on" below
                 LOG(m_loggerDetail) << "Starting to seal block #" << m_working.info().number();
                 m_working.commitToSeal(bc(), m_extraData);
@@ -625,12 +629,15 @@ void Client::rejigSealing()
             if (wouldSeal())
             {
                 sealEngine()->onSealGenerated([=](bytes const& _header) {
+                    cout << "Block sealed #" << BlockHeader(_header, HeaderData).number(); << endl;
                     LOG(m_logger) << "Block sealed #" << BlockHeader(_header, HeaderData).number();
+
                     if (this->submitSealed(_header))
                         m_onBlockSealed(_header);
                     else
                         LOG(m_logger) << "Submitting block failed...";
                 });
+
                 ctrace << "Generating seal on " << m_sealingInfo.hash(WithoutSeal) << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal(m_sealingInfo);
             }
@@ -638,6 +645,7 @@ void Client::rejigSealing()
         else
             m_wouldButShouldnot = true;
     }
+
     if (!m_wouldSeal)
         sealEngine()->cancelGeneration();
 }
@@ -697,7 +705,7 @@ void Client::doWork(bool _doWait)
 
     tick();
 
-    // What's it?
+    // Seal blocks.
     rejigSealing();
 
     callQueuedFunctions();
@@ -839,6 +847,7 @@ bool Client::submitSealed(bytes const& _header)
         UpgradableGuard l(x_working);
         {
             UpgradeGuard l2(l);
+
             if (!m_working.sealBlock(_header))
                 return false;
         }

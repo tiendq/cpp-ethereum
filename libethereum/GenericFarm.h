@@ -88,7 +88,7 @@ public:
 	/**
 	 * @brief Start a number of miners.
 	 */
-	// Is it called once?
+	// Is it called once? in Ethash::generateSeal to create miner array.
 	bool start(std::string const& _sealer)
 	{
 		cout << "GenericFarm::start" << endl;

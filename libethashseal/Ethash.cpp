@@ -65,6 +65,7 @@ Ethash::Ethash()
             return false;
 
         // where is onSealGenerated called to initialize m_onSealGenerated?
+        // called from Client::rejigSealing()
         if (m_onSealGenerated)
         {
             RLPStream ret;
@@ -244,6 +245,13 @@ void Ethash::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) co
 }
 
 // Verify if found hash is valid.
+/*
+The miner's GPU would iterate through a range of random Nonces. This Nonce, combined with the Seedhash
+and Header-hash using a hash function need to calculate a number below the Target.
+If this calculated number is below the target, the miner has successfully mined a block
+and the block details will be submitted to the Ethereum network nodes.
+https://ethereum.stackexchange.com/a/2581/44479
+*/
 bool Ethash::quickVerifySeal(BlockHeader const& _blockHeader) const
 {
     h256 const h = _blockHeader.hash(WithoutSeal);
